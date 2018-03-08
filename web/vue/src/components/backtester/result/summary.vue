@@ -15,13 +15,13 @@ div.contain
           td {{ report.timespan }}
         tr
           th start price
-          td {{ round(report.startPrice) }} {{ report.currency }}
+          td {{ round0(report.startPrice) }} {{ report.currency }}
         tr
           th end price
-          td {{ round(report.endPrice) }} {{ report.currency }}
+          td {{ round0(report.endPrice) }} {{ report.currency }}
         tr
           th market
-          td {{ round(report.market) }}%
+          td {{ round2(report.market) }}%
 
     paperTradeSummary(:report='report')
 
@@ -37,6 +37,8 @@ export default {
     paperTradeSummary
   },
   methods: {
+    round0: n => (+n).toFixed(0),
+    round2: n => (+n).toFixed(2),
     round: n => (+n).toFixed(5)
   },
   computed: {

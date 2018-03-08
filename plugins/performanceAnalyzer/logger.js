@@ -35,16 +35,16 @@ Logger.prototype.logReport = function(trade, report) {
   var start = this.round(report.startBalance);
   var current = this.round(report.balance);
 
-  log.info(`(PROFIT REPORT) original simulated balance:\t ${start} ${this.currency}`);
-  log.info(`(PROFIT REPORT) current simulated balance:\t ${current} ${this.currency}`);
+  log.info(`(PROFIT REPORT) original simulated balance:\t ${start} ${this.asset}`);
+  log.info(`(PROFIT REPORT) current simulated balance:\t ${current} ${this.asset}`);
   log.info(
-    `(PROFIT REPORT) simulated profit:\t\t ${this.round(report.profit)} ${this.currency}`,
+    `(PROFIT REPORT) simulated profit:\t\t ${this.round(report.profit)} ${this.asset}`,
     `(${this.round(report.relativeProfit)}%)`
   );
 }
 
 Logger.prototype.logRoundtripHeading = function() {
-  log.info('(ROUNDTRIP)', 'entry date (UTC)  \texit date (UTC)  \texposed duration\tP&L \tprofit');
+  log.info('(ROUNDTRIP)', 'entry date (UTC)  \texit date (UTC)  \texposed duration\tEntry\tExit\tP&L \tprofit\tdrawdown');
 }
 
 Logger.prototype.logRoundtrip = function(rt) {
@@ -52,8 +52,11 @@ Logger.prototype.logRoundtrip = function(rt) {
     rt.entryAt.utc().format('YYYY-MM-DD HH:mm'),
     rt.exitAt.utc().format('YYYY-MM-DD HH:mm'),
     (moment.duration(rt.duration).humanize() + "           ").slice(0,16),
+    rt.entryPrice.toFixed(0),
+    rt.exitPrice.toFixed(0),
     rt.pnl.toFixed(2),
-    rt.profit.toFixed(2)
+    rt.profit.toFixed(2),
+    rt.drawdown.toFixed(0)
   ];
 
   log.info('(ROUNDTRIP)', display.join('\t'));
@@ -65,29 +68,35 @@ if(mode === 'backtest') {
   // we only want to log a summarized one line report, like:
   // 2016-12-19 20:12:00: Paper trader simulated a BUY 0.000 USDT => 1.098 BTC
   Logger.prototype.handleTrade = function(trade) {
-    if(trade.action !== 'sell' && trade.action !== 'buy')
+    if(trade.action !== 'short' && trade.action !== 'long' && trade.action !== 'close')
       return;
 
     var at = trade.date.format('YYYY-MM-DD HH:mm:ss');
 
 
-    if(trade.action === 'sell')
+    if(trade.action === 'short')
 
         log.info(
-          `${at}: Paper trader simulated a SELL`,
-          `\t${this.round(trade.portfolio.currency)}`,
-          `${this.currency} <= ${this.round(trade.portfolio.asset)}`,
+          `${at}: Paper trader simulated a SHORT`,
+          `\t${this.round(trade.portfolio.asset)}`,
           `${this.asset}`
         );
 
-    else if(trade.action === 'buy')
+    else if(trade.action === 'long')
 
       log.info(
-        `${at}: Paper trader simulated a BUY`,
-        `\t${this.round(trade.portfolio.currency)}`,
-        `${this.currency}\t=> ${this.round(trade.portfolio.asset)}`,
+        `${at}: Paper trader simulated a LONG`,
+        `\t${this.round(trade.portfolio.asset)}`,
         `${this.asset}`
       );
+
+      else if(trade.action === 'close')
+
+        log.info(
+          `${at}: Paper trader simulated a CLOSE`,
+          `\t${this.round(trade.portfolio.asset)}`,
+          `${this.asset}`
+        );
   }
 
   Logger.prototype.finalize = function(report) {
@@ -110,12 +119,14 @@ if(mode === 'backtest') {
     log.info(`(PROFIT REPORT) Market:\t\t\t\t ${this.round(report.market)}%`);
     log.info();
     log.info(`(PROFIT REPORT) amount of trades:\t\t ${report.trades}`);
+    log.info(`(PROFIT REPORT) amount of profitable trades:\t ${report.ptrades}`);
+    log.info(`(PROFIT REPORT) max drawdown:\t\t\t ${report.drawdown.toFixed(0)} ${this.currency}`);
 
     this.logReport(null, report);
 
     log.info(
       `(PROFIT REPORT) simulated yearly profit:\t ${report.yearlyProfit}`,
-      `${this.currency} (${report.relativeYearlyProfit}%)`
+      `${this.asset} (${report.relativeYearlyProfit}%)`
     );
   }
 

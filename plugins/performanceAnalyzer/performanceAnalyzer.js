@@ -12,9 +12,9 @@ const watchConfig = config.watch;
 // Load the proper module that handles the results
 var Handler;
 if(ENV === 'child-process')
-  Handler = require('./cpRelay');
+Handler = require('./cpRelay');
 else
-  Handler = require('./logger');
+Handler = require('./logger');
 
 const PerformanceAnalyzer = function() {
   _.bindAll(this);
@@ -40,7 +40,10 @@ const PerformanceAnalyzer = function() {
   this.roundTrip = {
     id: 0,
     entry: false,
-    exit: false
+    exit: false,
+    low: 0,
+    side: 'none',
+    drawdown: 0
   }
 }
 
@@ -54,6 +57,12 @@ PerformanceAnalyzer.prototype.processCandle = function(candle, done) {
   }
 
   this.endPrice = candle.close;
+
+  if(this.roundTrip.side === 'long' && this.roundTrip.drawdown > candle.close - this.roundTrip.entry.price) {
+    this.roundTrip.drawdown = candle.close - this.roundTrip.entry.price;
+  } else if(this.roundTrip.side === 'short' && this.roundTrip.drawdown > this.roundTrip.entry.price - candle.close) {
+    this.roundTrip.drawdown = this.roundTrip.entry.price - candle.close;
+  }
 
   done();
 }
@@ -74,33 +83,39 @@ PerformanceAnalyzer.prototype.processTrade = function(trade) {
 }
 
 PerformanceAnalyzer.prototype.logRoundtripPart = function(trade) {
-  // this is not part of a valid roundtrip
-  if(!this.roundTrip.entry && trade.action === 'sell') {
-    return;
-  }
-
-  if(trade.action === 'buy') {
-    if (this.roundTrip.exit) {
-      this.roundTrip.id++;
-      this.roundTrip.exit = false
+  if(trade.action === 'long' || trade.action === 'short') {
+    if (this.roundTrip.entry) {
+      this.roundTrip.exit = {
+        date: trade.date,
+        price: trade.price,
+        total: trade.portfolio.asset,
+      }
+      this.handleRoundtrip();
     }
-
     this.roundTrip.entry = {
       date: trade.date,
       price: trade.price,
-      total: trade.portfolio.currency + (trade.portfolio.asset * trade.price),
+      total: trade.portfolio.asset,
     }
-  } else if(trade.action === 'sell') {
-    this.roundTrip.exit = {
-      date: trade.date,
-      price: trade.price,
-      total: trade.portfolio.currency + (trade.portfolio.asset * trade.price),
-    }
+    //this.roundTrip.id++;
+    this.roundTrip.exit = false;
+    this.roundTrip.side = trade.action;
+    this.roundTrip.drawdown = 0;
 
-    this.handleRoundtrip();
+  } else if (trade.action === 'close') {
+    if (this.roundTrip.entry) {
+      this.roundTrip.exit = {
+        date: trade.date,
+        price: trade.price,
+        total: trade.portfolio.asset,
+      }
+      this.handleRoundtrip();
+      this.roundTrip.entry = false;
+      this.roundTrip.side = 'none';
+      this.roundTrip.drawdown = 0;
+    }
   }
 }
-
 PerformanceAnalyzer.prototype.round = function(amount) {
   return amount.toFixed(8);
 }
@@ -117,13 +132,15 @@ PerformanceAnalyzer.prototype.handleRoundtrip = function() {
     exitPrice: this.roundTrip.exit.price,
     exitBalance: this.roundTrip.exit.total,
 
-    duration: this.roundTrip.exit.date.diff(this.roundTrip.entry.date)
+    duration: this.roundTrip.exit.date.diff(this.roundTrip.entry.date),
+
+    drawdown: this.roundTrip.drawdown
   }
 
   roundtrip.pnl = roundtrip.exitBalance - roundtrip.entryBalance;
   roundtrip.profit = (100 * roundtrip.exitBalance / roundtrip.entryBalance) - 100;
 
-  this.roundTrips[this.roundTrip.id] = roundtrip;
+  this.roundTrips[this.roundTrip.id++] = roundtrip;
 
   // this will keep resending roundtrips, that is not ideal.. what do we do about it?
   this.handler.handleRoundtrip(roundtrip);
@@ -140,7 +157,7 @@ PerformanceAnalyzer.prototype.handleRoundtrip = function() {
 
 PerformanceAnalyzer.prototype.calculateReportStatistics = function() {
   // the portfolio's balance is measured in {currency}
-  let balance = this.current.currency + this.price * this.current.asset;
+  let balance = this.current.asset;//this.current.currency + this.price * this.current.asset;
   let profit = balance - this.start.balance;
 
   let timespan = moment.duration(
@@ -166,12 +183,22 @@ PerformanceAnalyzer.prototype.calculateReportStatistics = function() {
 
     startPrice: this.startPrice,
     endPrice: this.endPrice,
-    trades: this.trades,
+    //trades: this.trades,
+    trades: this.roundTrips.length,
+    ptrades: _.filter(this.roundTrips, rt => { if (rt.exitBalance >= rt.entryBalance) return rt }).length,
     startBalance: this.start.balance,
-    sharpe: this.sharpe
+    sharpe: this.sharpe,
+    drawdown: Math.min.apply(0, this.roundTrips.map(function(elt) { return elt.drawdown; })),
+    grossLoss: _.reduce(this.roundTrips, function(sum, rt) { return rt.exitBalance < rt.entryBalance ? sum + rt.exitBalance - rt.entryBalance : sum },0),
+    grossProfit: _.reduce(this.roundTrips, function(sum, rt) { return rt.exitBalance > rt.entryBalance ? sum + rt.exitBalance - rt.entryBalance : sum },0)
   }
 
   report.alpha = report.profit - report.market;
+  report.profitFactor = report.grossLoss != 0 ? Math.abs(report.grossProfit / report.grossLoss) : 0;
+  report.avgWinTrade = report.ptrades == 0 ? 0 : report.grossProfit / report.ptrades;
+  report.avgLosingTrade = report.trades - report.ptrades == 0 ? 0 : Math.abs(report.grossLoss) / (report.trades - report.ptrades);
+  report.payOffRatio = report.avgWinTrade / report.avgLosingTrade;
+  report.winRate = report.profitFactor + report.payOffRatio == 0 ? 0 : report.profitFactor / (report.profitFactor + report.payOffRatio);
 
   return report;
 }

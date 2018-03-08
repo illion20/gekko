@@ -2,7 +2,6 @@ const _ = require('lodash');
 
 const util = require('../../core/util');
 const ENV = util.gekkoEnv();
-
 const config = util.getConfig();
 const calcConfig = config.paperTrader;
 const watchConfig = config.watch;
@@ -32,9 +31,11 @@ PaperTrader.prototype.relayTrade = function(advice) {
 
   let action;
   if(what === 'short')
-    action = 'sell';
+    action = 'short';
   else if(what === 'long')
-    action = 'buy';
+    action = 'long';
+  else if(what === 'close')
+    action = 'close';
   else
     return;
 
@@ -42,7 +43,7 @@ PaperTrader.prototype.relayTrade = function(advice) {
     action,
     price,
     portfolio: _.clone(this.portfolio),
-    balance: this.portfolio.currency + this.price * this.portfolio.asset,
+    balance: this.portfolio.asset,
     date: at
   });
 }
@@ -60,7 +61,7 @@ PaperTrader.prototype.extractFee = function(amount) {
 }
 
 PaperTrader.prototype.setStartBalance = function() {
-  this.portfolio.balance = this.portfolio.currency + this.price * this.portfolio.asset;
+  this.portfolio.balance = this.portfolio.asset;//this.price * this.portfolio.asset;
   this.relayPortfolio();
 }
 
@@ -73,19 +74,18 @@ PaperTrader.prototype.updatePosition = function(advice) {
 
   // virtually trade all {currency} to {asset}
   // at the current price (minus fees)
-  if(what === 'long') {
-    this.portfolio.asset += this.extractFee(this.portfolio.currency / price);
-    this.portfolio.currency = 0;
+  if((what === 'close' && this.lastWhat === 'short') || (what === 'long' && this.lastWhat === 'short')) {
+    this.portfolio.asset = this.extractFee(this.portfolio.asset + (this.portfolio.asset * this.lastPrice - this.portfolio.asset * price) / price);
+  } else if((what === 'close' && this.lastWhat === 'long') || (what === 'short' && this.lastWhat === 'long')) {
+    this.portfolio.asset = this.extractFee(this.portfolio.asset + (this.portfolio.asset * price - this.portfolio.asset * this.lastPrice) / price);
+  }
+  if (what === 'short' || what === 'long') {
     this.trades++;
+    this.portfolio.asset = this.extractFee(this.portfolio.asset);
   }
 
-  // virtually trade all {currency} to {asset}
-  // at the current price (minus fees)
-  else if(what === 'short') {
-    this.portfolio.currency += this.extractFee(this.portfolio.asset * price);
-    this.portfolio.asset = 0;
-    this.trades++;
-  }
+  this.lastPrice = price;
+  this.lastWhat = what;
 }
 
 PaperTrader.prototype.processAdvice = function(advice) {

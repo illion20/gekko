@@ -93,12 +93,15 @@ export default {
   stroke-width: 2.5px;
 }*/
 
-#chart circle.buy {
-  fill: #7FFF00;
+#chart circle.long {
+  fill: #4184FE;
 }
 
-#chart circle.sell {
-  fill: red;
+#chart circle.short {
+  fill: #F61F17;
 }
 
+#chart circle.close {
+  fill: #CA32EC;
+}
 </style>

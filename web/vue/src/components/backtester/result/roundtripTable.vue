@@ -9,20 +9,26 @@
           th Exposure
           th Entry balance
           th Exit balance
+          th Entry price
+          th Exit price
           th P&amp;L
           th Profit
+          th Drawdown
         tr(v-for='rt in roundtrips')
           td {{ fmt(rt.entryAt) }}
           td {{ fmt(rt.exitAt) }}
           td {{ diff(rt.duration) }}
           td {{ round(rt.entryBalance) }}
           td {{ round(rt.exitBalance) }}
+          td {{ rt.entryPrice.toFixed(0) }}
+          td {{ rt.exitPrice.toFixed(0) }}
           template(v-if="Math.sign(rt.pnl)===-1")
             td.loss {{ Math.sign(rt.pnl)*rt.pnl.toFixed(2) }}
             td.loss {{ rt.profit.toFixed(2) }}%
           template(v-else)
             td.profit {{ rt.pnl.toFixed(2) }}
             td.profit {{ rt.profit.toFixed(2) }}%
+          td {{ rt.drawdown.toFixed(0) }}
     div(v-if='!roundtrips.length')
       p Not enough data to display
 </template>
