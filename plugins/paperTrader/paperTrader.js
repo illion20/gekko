@@ -75,9 +75,9 @@ PaperTrader.prototype.updatePosition = function(advice) {
   // virtually trade all {currency} to {asset}
   // at the current price (minus fees)
   if((what === 'close' && this.lastWhat === 'short') || (what === 'long' && this.lastWhat === 'short')) {
-    this.portfolio.asset = this.extractFee(this.portfolio.asset + (this.portfolio.asset * this.lastPrice - this.portfolio.asset * price) / price);
+    this.portfolio.asset = this.extractFee(this.portfolio.asset + (1 / price - 1 / this.lastPrice) * (this.portfolio.asset * this.lastPrice));
   } else if((what === 'close' && this.lastWhat === 'long') || (what === 'short' && this.lastWhat === 'long')) {
-    this.portfolio.asset = this.extractFee(this.portfolio.asset + (this.portfolio.asset * price - this.portfolio.asset * this.lastPrice) / price);
+    this.portfolio.asset = this.extractFee(this.portfolio.asset + (1 / this.lastPrice - 1 / price) * (this.portfolio.asset * this.lastPrice));
   }
   if (what === 'short' || what === 'long') {
     this.trades++;
