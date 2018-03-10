@@ -20,7 +20,7 @@ Indicator.prototype.update = function(price) {
 
 Indicator.prototype.calculate = function(price) {
   // weight factor
-  var k = this.weight - 1;
+  var k = 1/this.weight;
 
   // yesterday
   var y = this.result;
