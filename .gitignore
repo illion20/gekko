@@ -40,7 +40,7 @@ dwsync.xml
 node_modules
 candles.csv
 pati.toml
-pati*.js
+strategies/*.js
 cexio.db
 history
 TMP_*
