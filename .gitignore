@@ -38,6 +38,7 @@ dwsync.xml
 # Folders & files to ignore
 
 node_modules
+config/strategies
 candles.csv
 pati.toml
 strategies/*.js
