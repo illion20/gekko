@@ -5,7 +5,7 @@ var Indicator = function(settings) {
   this.maximum = settings.optInMaximum;
   this.result = 0;
   this.bull = true;
-  this.af = settings.optInAcceleration;
+  this.start = settings.optInStart;
 }
 
 Indicator.prototype.update = function(candle) {
@@ -17,6 +17,7 @@ Indicator.prototype.update = function(candle) {
     this.high2 = candle.high;
     this.hp = candle.high;
     this.lp = candle.low;
+    this.af = this.start;
     return;
   }
 
@@ -34,7 +35,7 @@ Indicator.prototype.update = function(candle) {
       reverse = true;
       this.psar = this.hp;
       this.lp = candle.low;
-      this.af = this.acceleration;
+      this.af = this.start;
     }
   } else {
     if(candle.high > this.psar){
@@ -42,7 +43,7 @@ Indicator.prototype.update = function(candle) {
       reverse = true;
       this.psar = this.lp;
       this.hp = candle.high;
-      this.af = this.acceleration;
+      this.af = this.start;
     }
   }
 
