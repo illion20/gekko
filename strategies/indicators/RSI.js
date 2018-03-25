@@ -2,7 +2,7 @@
 var SMMA = require('./SMMA.js');
 
 var Indicator = function (settings) {
-  this.input = 'candle';
+  this.input = 'price';
   this.lastClose = null;
   this.weight = settings.interval;
   this.avgU = new SMMA(this.weight);
@@ -14,8 +14,8 @@ var Indicator = function (settings) {
   this.age = 0;
 }
 
-Indicator.prototype.update = function (candle) {
-  var currentClose = candle.close;
+Indicator.prototype.update = function (price) {
+  var currentClose = price;
 
   if (this.lastClose === null) {
     // Set initial price to prevent invalid change calculation
