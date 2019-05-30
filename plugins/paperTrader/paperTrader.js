@@ -71,17 +71,17 @@ PaperTrader.prototype.setStartBalance = function() {
 PaperTrader.prototype.updatePosition = function(advice) {
   let what = advice.recommendation;
   let price = advice.candle.close;
-
+  let margin = 1;
   // virtually trade all {currency} to {asset}
   // at the current price (minus fees)
   if((what === 'close' && this.lastWhat === 'short') || (what === 'long' && this.lastWhat === 'short')) {
-    this.portfolio.asset = this.extractFee(this.portfolio.asset + (1 / price - 1 / this.lastPrice) * (this.portfolio.asset * this.lastPrice));
+    this.portfolio.asset += this.extractFee(margin + (1 / price - 1 / this.lastPrice) * (margin * this.lastPrice)) - margin;
   } else if((what === 'close' && this.lastWhat === 'long') || (what === 'short' && this.lastWhat === 'long')) {
-    this.portfolio.asset = this.extractFee(this.portfolio.asset + (1 / this.lastPrice - 1 / price) * (this.portfolio.asset * this.lastPrice));
+    this.portfolio.asset += this.extractFee(margin + (1 / this.lastPrice - 1 / price) * (margin * this.lastPrice)) - margin;
   }
   if (what === 'short' || what === 'long') {
     this.trades++;
-    this.portfolio.asset = this.extractFee(this.portfolio.asset);
+    this.portfolio.asset += this.extractFee(margin) - margin;
   }
 
   this.lastPrice = price;

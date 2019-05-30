@@ -52,3 +52,5 @@ config-*.js
 private-*.js
 private-*.toml
 SECRET-api-keys.json
+web/vue/dist/build.js
+web/vue/dist/build.js
